@@ -7,6 +7,8 @@
 #include "beam_frame_driver.h"
 #include "mod_runtime.h"
 #include "snes/ppu.h"
+#include "snes/snes.h"
+#include "common_cpu_infra.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

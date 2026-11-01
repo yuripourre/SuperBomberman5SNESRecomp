@@ -1,0 +1,18 @@
+# Alternate ROM identity: the 2 MiB Japanese retail image of Super Bomberman 5.
+#
+# Not the default. A build targets one identity, the one its generated code came
+# from, and this one is selected explicitly:
+#   tools/regen.sh --identity rom_identity_jpn_2mib.txt --rom <path>
+#   cmake -S . -B build-lle-2mib -DSB5_ROM_IDENTITY=rom_identity_jpn_2mib.txt
+# Releases and CI keep using rom_identity.txt. Unqualified: see docs/STATUS.md.
+
+display_name    = Super Bomberman 5
+rom_file        = Super Bomber Man 5 (Japan).sfc
+expected_crc32  = 06b1f0f5
+expected_md5    = 3103de24bd9b46aad3e211574e5a0621
+expected_sha1   = e2dd2f062d3b41f7550fdbc5f7e2b7d0c8ac684c
+expected_sha256 = b8ea7591bd957c67cc27955e00609f1d659db9ac91a9bd321750de2ab4d1d676
+rom_size        = 2097152
+mapping         = hirom
+region          = Japan
+game_id         = superbomberman5-jpn

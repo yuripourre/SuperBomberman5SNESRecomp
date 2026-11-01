@@ -114,6 +114,14 @@ cd SuperBomberman5SNESRecomp
 
 Then open `SuperBomberman5Recomp.exe` at the repository root. Tools go to the ignored `.tools/` folder. See [BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md). Never hand-edit or commit `src/gen/`.
 
+The 2 MiB Japanese ROM (SHA-256 `b8ea7591...`) needs its own source build and is unqualified. Releases do not accept it. PT-BR, Battle variants and the 3-5 player menu do not work on it ([STATUS.md](docs/STATUS.md)):
+
+```bash
+bash tools/regen.sh --identity rom_identity_jpn_2mib.txt --rom "/path/to/your-rom.sfc"
+cmake -S . -B build-lle-2mib -G Ninja -DCMAKE_BUILD_TYPE=Release -DSB5_ROM_IDENTITY=rom_identity_jpn_2mib.txt -DSNESRECOMP_FRAME_IMPL=LLE
+cmake --build build-lle-2mib
+```
+
 ### Status and limits
 
 SNESRecomp translates analyzable 65816 routines into C and runs the rest through an interpreter, with PPU, APU, DMA and cartridge hardware modeled. AOT coverage is small and reset/NMI remain interpreted. Gameplay is verified with scripted routes on Linux LLE and maintainer play on Windows, including a full campaign playthrough; all mod combinations, physical five-player play and broad Linux compatibility are not qualified. Netplay is new in v2.0.0; it was tested successfully in a real two-player online match, and three or more peers are not qualified. The Android APK runs everything on the interpreter (no recompiled code on the phone); its speed depends on the phone and has been checked on the maintainer's phone and in CI emulator tests, not across devices. No widescreen or macOS. Details: [STATUS.md](docs/STATUS.md).
@@ -201,6 +209,15 @@ Todos já vêm no pacote de setup (sem download separado) e podem ser ativados j
 ### Compilar
 
 Instale Git for Windows e Python 3.11+ e execute os comandos de [Build from source](#build-from-source); depois abra `SuperBomberman5Recomp.exe` na raiz do repositório. Veja [BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md) e [CONTRIBUTING.md](CONTRIBUTING.md).
+
+
+A ROM japonesa de 2 MiB (SHA-256 `b8ea7591...`) precisa de uma compilação própria e não é qualificada. As releases não a aceitam. PT-BR, as variantes de Battle e o menu de 3 a 5 jogadores não funcionam nela ([STATUS.md](docs/STATUS.md)):
+
+```bash
+bash tools/regen.sh --identity rom_identity_jpn_2mib.txt --rom "/caminho/para/sua-rom.sfc"
+cmake -S . -B build-lle-2mib -G Ninja -DCMAKE_BUILD_TYPE=Release -DSB5_ROM_IDENTITY=rom_identity_jpn_2mib.txt -DSNESRECOMP_FRAME_IMPL=LLE
+cmake --build build-lle-2mib
+```
 
 ### Estado e limites
 

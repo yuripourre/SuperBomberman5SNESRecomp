@@ -265,7 +265,26 @@ endif()
 # turns it into snesrecomp_rom_identity.h (SNESRECOMP_ROM_EXPECTED_SHA256 and
 # friends) for src/main.c, and tools/regen.sh, scripts/package_release.sh and
 # the release workflow read the same file. A revision bump is one edit there.
-snesrecomp_rom_identity(SuperBomberman5SNESRecomp ${CMAKE_CURRENT_SOURCE_DIR}/rom_identity.txt)
+# SB5_ROM_IDENTITY selects another dump for a source build. A binary accepts
+# exactly the ROM its generated code came from, so tools/regen.sh records that
+# ROM in src/gen/.rom_identity and a mismatch stops here.
+set(SB5_ROM_IDENTITY "rom_identity.txt" CACHE FILEPATH
+    "ROM identity file for this build, relative to the source root")
+get_filename_component(_sb5_identity "${SB5_ROM_IDENTITY}" ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+snesrecomp_rom_identity(SuperBomberman5SNESRecomp "${_sb5_identity}")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/gen/.rom_identity")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/gen/.rom_identity")
+    file(READ "${_sb5_identity}" _sb5_identity_text)
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/gen/.rom_identity" _sb5_gen_sha256)
+    string(STRIP "${_sb5_gen_sha256}" _sb5_gen_sha256)
+    string(REGEX MATCH "expected_sha256[ \t]*=[ \t]*([0-9a-fA-F]+)" _ "${_sb5_identity_text}")
+    if(NOT CMAKE_MATCH_1 STREQUAL _sb5_gen_sha256)
+        message(FATAL_ERROR
+            "src/gen was generated from ROM ${_sb5_gen_sha256}, but ${SB5_ROM_IDENTITY} "
+            "names ${CMAKE_MATCH_1}. Run tools/regen.sh --identity ${SB5_ROM_IDENTITY}, "
+            "or select the identity that matches src/gen.")
+    endif()
+endif()
 
 # Generated recompiler output. Not committed: it is derived from a copyrighted
 # ROM, so every developer regenerates it locally from their own copy -- and a

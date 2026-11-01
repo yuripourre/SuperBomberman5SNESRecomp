@@ -22,7 +22,7 @@ class PublicationGuardTests(unittest.TestCase):
 
     def test_allows_source_scripts_symbols_and_notices(self):
         for path in ['tools/build-windows.ps1', 'src/game_rtl.c', 'recomp/symbols.toml',
-                     'rom_identity.txt', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
+                     'rom_identity.txt', 'rom_identity_jpn_2mib.txt', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
                      '.agents/skills/super-bomberman5-repository/SKILL.md']:
             with self.subTest(path=path):
                 self.assertIsNone(audit.forbidden(path))
@@ -66,11 +66,24 @@ class PublicationGuardTests(unittest.TestCase):
                 archive.writestr('setup/data.dat', synthetic)
                 archive.writestr('../escape.txt', 'synthetic')
                 archive.writestr('setup/snesrecomp/docs/assets/games/game.png', 'synthetic')
-            with patch.object(audit, 'rom_digest', return_value=hashlib.sha256(synthetic).hexdigest()):
+            with patch.object(audit, 'rom_digests', return_value={4194304: {hashlib.sha256(synthetic).hexdigest()}}):
                 errors = audit.audit_zip(archive_path)
             self.assertTrue(any('reference ROM bytes' in e for e in errors))
             self.assertTrue(any('path traversal' in e for e in errors))
             self.assertTrue(any('dependency screenshot' in e for e in errors))
+
+    def test_every_identity_file_guards_its_dump(self):
+        digests = audit.rom_digests()
+        self.assertIn('5251e6491872dc51879b630a34d76a92e29ea0c39026c4f8773c1fe006d047c4', digests[4194304])
+        self.assertIn('b8ea7591bd957c67cc27955e00609f1d659db9ac91a9bd321750de2ab4d1d676', digests[2097152])
+
+    def test_known_rom_matches_either_size_with_or_without_copier_header(self):
+        small = b'\1' * 2097152
+        digests = {2097152: {hashlib.sha256(small).hexdigest()}, 4194304: {'0' * 64}}
+        self.assertTrue(audit.is_known_rom(lambda: small, len(small), digests))
+        self.assertTrue(audit.is_known_rom(lambda: b'\0' * 512 + small, len(small) + 512, digests))
+        self.assertFalse(audit.is_known_rom(lambda: b'\2' * 2097152, 2097152, digests))
+        self.assertFalse(audit.is_known_rom(lambda: b'', 7, digests))
 
 
 if __name__ == '__main__':

@@ -12,6 +12,8 @@
 #                 the setup wizard writes). The ROM does not have to live in
 #                 the repo — keeping it on your own drive is the better
 #                 habit, and SNESRECOMP_ROM sets it once for a shell.
+#   --identity <file>  ROM identity file (default rom_identity.txt). Configure
+#                 with the same -DSB5_ROM_IDENTITY; the build refuses a mismatch.
 #   --no-verify   skip the ROM digest check (for a revision this project has
 #                 not been pinned to yet — expect the generated C to differ)
 #   --cfg-roots   seed analysis from every func declaration in recomp/*.cfg
@@ -25,9 +27,11 @@ cd "$ROOT"
 VERIFY=1
 CFG_ROOTS=0
 ROM=""
+IDENTITY_FILE="rom_identity.txt"
 while [ $# -gt 0 ]; do
   case "$1" in
     --rom) ROM=$2; shift 2 ;;
+    --identity) IDENTITY_FILE=$2; shift 2 ;;
     --no-verify) VERIFY=0; shift ;;
     --cfg-roots) CFG_ROOTS=1; shift ;;
     -h|--help) sed -n '2,/^set -euo/p' "$0" | sed -n '/^# /p' | sed 's/^# //'; exit 0 ;;
@@ -51,16 +55,18 @@ fi
 # The framework parses rom_identity.txt (the same parser CI uses), so this
 # script carries no copy of a digest to forget on a revision bump.
 IDENTITY="$SNESRECOMP_ROOT/tools/rom_identity.py"
-EXPECTED_CRC32="${SNESRECOMP_EXPECTED_CRC32:-$("$PYTHON" "$IDENTITY" "$ROOT/rom_identity.txt" --get expected_crc32)}"
-EXPECTED_SHA256="${SNESRECOMP_EXPECTED_SHA256:-$("$PYTHON" "$IDENTITY" "$ROOT/rom_identity.txt" --get expected_sha256)}"
+EXPECTED_CRC32="${SNESRECOMP_EXPECTED_CRC32:-$("$PYTHON" "$IDENTITY" "$IDENTITY_FILE" --get expected_crc32)}"
+EXPECTED_SHA256="${SNESRECOMP_EXPECTED_SHA256:-$("$PYTHON" "$IDENTITY" "$IDENTITY_FILE" --get expected_sha256)}"
+ROM_FILE="$("$PYTHON" "$IDENTITY" "$IDENTITY_FILE" --get rom_file)"
+ROM_FILE=${ROM_FILE%$'\r'}
 
 # The framework owns the search: --rom, then SNESRECOMP_ROM, then a known
 # name at the root, then rom.cfg (the path the setup wizard recorded).
 RESOLVE=(resolve-rom --project-root "$ROOT"
-         --name "Super Bomberman 5 (USA).sfc" --name "superbomberman5.sfc" --name "superbomberman5.smc")
+         --name "$ROM_FILE" --name "superbomberman5.sfc" --name "superbomberman5.smc")
 if [ -n "$ROM" ]; then RESOLVE+=(--rom "$ROM"); fi
 if ! ROM=$("$PYTHON" "$CLI" "${RESOLVE[@]}"); then
-  echo "regen.sh: pass --rom /path/to/Super Bomberman 5 (USA).sfc, set SNESRECOMP_ROM, put it" >&2
+  echo "regen.sh: pass --rom "/path/to/$ROM_FILE", set SNESRECOMP_ROM, put it" >&2
   echo "          at the repo root, or record its path in rom.cfg. You must" >&2
   echo "          legally own a copy of Super Bomberman 5." >&2
   exit 1
@@ -83,7 +89,14 @@ if [ "$VERIFY" -eq 1 ]; then GEN_ARGS+=("${VERIFY_ARGS[@]}"); fi
 
 echo "== Generating src/gen =="
 "$PYTHON" "$CLI" generate "${GEN_ARGS[@]}"
+# What the build compares its selected identity with. Unverified output has no
+# known source ROM, so a stale record must not survive it.
+if [ "$VERIFY" -eq 1 ]; then
+  printf '%s\n' "${EXPECTED_SHA256%$'\r'}" > src/gen/.rom_identity
+else
+  rm -f src/gen/.rom_identity
+fi
 
 echo
 echo "Done. Build with:"
-echo "  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j"
+echo "  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSB5_ROM_IDENTITY=$IDENTITY_FILE && cmake --build build -j"

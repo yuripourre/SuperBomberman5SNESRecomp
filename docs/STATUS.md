@@ -1,5 +1,28 @@
 # Super Bomberman 5: estado do protótipo
 
+## Unreleased — 2026-10-31: source builds for the 2 MiB Japanese ROM
+
+- **Change:** `rom_identity_jpn_2mib.txt` (`b8ea7591...`) selected with `tools/regen.sh --identity` and
+  `-DSB5_ROM_IDENTITY`. A build accepts one ROM, the one its code was generated from; `src/gen/.rom_identity` makes
+  configure fail on a mismatch. The default identity, CI and releases are unchanged. The publication audit now also
+  guards this dump. Mod manifests gain a second target, except PT-BR and Battle variants.
+- **Font guard:** `native_font_in_rom` draws the authored font when the cartridge is smaller than the native font
+  locations (up to `$23DD50`). The five-player menu and Gold Battle's Hyper label use that code with PT-BR off and
+  would have read past a 2 MiB buffer. A 4 MiB cartridge keeps the native font (native test).
+- **Passes (Linux, LLE, headless):** `ctest` (24), Python tests (27). On the 2 MiB ROM: `validation/first-stage.input`
+  reached Zone 1-1 with no mods; a picker, confirm, stage and walk route with 14 mods on together. Logs had no
+  `interp_cap`, `unresolved-abandon`, `BRK`, `error` or `fatal`. Default identity: a ROM-free setup host builds with
+  the unchanged `5251e649...`, and `tools/regen.sh` refuses the 2 MiB ROM.
+- **Not validated on the 4 MiB ROM.** It was not available, so the default path is covered by build, native tests and
+  review only. Windows was not built.
+- **Known limits on the 2 MiB ROM:** its menu tiles differ, so `native_player_menu` (`normal_coop_mod.c`) expects
+  302/261 and 278/261 and finds 269/268 and 295/268. The five-player menu never appears, so 3-5 player co-op cannot
+  be selected. PT-BR's guards are also tile-based, the likely cause of untranslated menus seen there (not confirmed).
+  PT-BR and Battle variants (hard-coded bank `$E3`; this ROM's loader uses `$85`) stay off. Enabling either refuses
+  Play with the conflict message.
+- **Not exercised on it:** a real window or the launcher, Bomber Kings, Boss Rush, Battle, netplay, saves and each
+  remaining mod's own feature. Loading together on one route does not validate them.
+
 ## v3.0.1 — 2026-10-31: phone stutter
 
 - Report: video from a Redmi 13C (Helio G85) with the game stuttering. Change (`src/android_assets.c`

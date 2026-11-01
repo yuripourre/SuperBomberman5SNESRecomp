@@ -27,6 +27,13 @@ before changing code, docs or releases. Humans: see README.md and CONTRIBUTING.m
   **JPN** (`Hu SUPER BOMBERMAN 5`), Fast HiROM, 4 MiB, 8 KiB SRAM.
   `rom_identity.txt` is the single source of truth (hashes, `game_id =
   superbomberman5-jpn`). Hashes decide compatibility, never filenames.
+  `rom_identity_jpn_2mib.txt` is an opt-in alternate for source builds: the
+  2 MiB retail image (`b8ea7591...`), `tools/regen.sh --identity` plus
+  `-DSB5_ROM_IDENTITY`. A build accepts only the ROM its `src/gen` came from.
+  Unqualified; addresses in §6 were verified on the 4 MiB image. Differences
+  found: player-menu tiles (`$424B/$424C`, `$428B/$428C` = 269/268, 295/268, so
+  the five-seat menu is not detected), archive table bank `$85` instead of `$E3`
+  at the `$C0:1B04` loader, no native font data past 2 MiB (authored fallback).
 - Owner/public remote: `MauricioSuporte/SuperBomberman5SNESRecomp`. Windows x64
   is the qualified platform; releases since v0.4.4 also offer an experimental Linux x86_64
   setup AppImage (Ubuntu CI and limited WSL evidence in docs/STATUS.md). Current version lives in `VERSION`.

@@ -70,9 +70,23 @@ def forbidden(path: str, release: bool = False) -> str | None:
     return None
 
 
-def rom_digest() -> str:
-    text = (ROOT / 'rom_identity.txt').read_text(encoding='utf-8')
-    return re.search(r'expected_sha256\s*=\s*([0-9a-fA-F]{64})', text)[1].lower()
+def rom_digests() -> dict[int, set[str]]:
+    """Digests of every identified dump, by image size."""
+    digests: dict[int, set[str]] = {}
+    for identity in sorted(ROOT.glob('rom_identity*.txt')):
+        text = identity.read_text(encoding='utf-8')
+        size = int(re.search(r'^rom_size\s*=\s*(\d+)', text, re.M)[1])
+        digest = re.search(r'expected_sha256\s*=\s*([0-9a-fA-F]{64})', text)[1].lower()
+        digests.setdefault(size, set()).add(digest)
+    return digests
+
+
+def is_known_rom(read, length: int, digests: dict[int, set[str]]) -> bool:
+    """Whether bytes of this length are an identified dump, copier header or not."""
+    for size, known in digests.items():
+        if length in {size, size + 512}:
+            return hashlib.sha256(read()[-size:]).hexdigest() in known
+    return False
 
 
 def audit_source(history: bool) -> list[str]:
@@ -87,7 +101,7 @@ def audit_source(history: bool) -> list[str]:
     if history:
         # Top-level objects only; upstream submodule histories are not rewritten.
         objects = git('rev-list', '--objects', '--all').splitlines()
-        expected = rom_digest()
+        digests = rom_digests()
         for line in objects:
             oid, _, path = line.partition(' ')
             if not path:
@@ -104,16 +118,16 @@ def audit_source(history: bool) -> list[str]:
             if reason:
                 errors.append(f'history {path}: {reason}')
             kind = git('cat-file', '-t', oid)
-            if kind == 'blob' and int(git('cat-file', '-s', oid)) in {4194304, 4194816}:
-                data = subprocess.check_output(['git', '-C', str(ROOT), 'cat-file', 'blob', oid])
-                if hashlib.sha256(data[-4194304:]).hexdigest() == expected:
+            if kind == 'blob':
+                read = lambda: subprocess.check_output(['git', '-C', str(ROOT), 'cat-file', 'blob', oid])
+                if is_known_rom(read, int(git('cat-file', '-s', oid)), digests):
                     errors.append(f'history {path}: reference ROM bytes, even if renamed')
     return sorted(set(errors))
 
 
 def audit_zip(path: pathlib.Path) -> list[str]:
     errors = []
-    expected = rom_digest()
+    digests = rom_digests()
     with zipfile.ZipFile(path) as archive:
         for item in archive.infolist():
             p = pathlib.PurePosixPath(item.filename)
@@ -123,7 +137,7 @@ def audit_zip(path: pathlib.Path) -> list[str]:
             reason = forbidden(item.filename, release=True)
             if reason:
                 errors.append(f'archive {item.filename}: {reason}')
-            if item.file_size in {4194304, 4194816} and hashlib.sha256(archive.read(item)[-4194304:]).hexdigest() == expected:
+            if is_known_rom(lambda: archive.read(item), item.file_size, digests):
                 errors.append(f'archive {item.filename}: reference ROM bytes')
             if '/docs/assets/games/' in item.filename or '/test_data/' in item.filename:
                 errors.append(f'archive {item.filename}: dependency screenshot or test fixture')

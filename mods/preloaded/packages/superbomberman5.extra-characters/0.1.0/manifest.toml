@@ -12,6 +12,10 @@ save_compatibility = "shared"
 game_id = "superbomberman5-jpn"
 rom_sha256 = "5251e6491872dc51879b630a34d76a92e29ea0c39026c4f8773c1fe006d047c4"
 
+[[target]]
+game_id = "superbomberman5-jpn"
+rom_sha256 = "b8ea7591bd957c67cc27955e00609f1d659db9ac91a9bd321750de2ab4d1d676"
+
 [[feature]]
 id = "extra_characters"
 name = "Play as the Super Bomberman 5 Extra Characters"
